@@ -20,8 +20,8 @@ export function ConnectWalletButton() {
 
   return (
     <>
-      <Button variant="outline" size="sm" className="gap-2" onClick={openModal}>
-        <Wallet className="h-4 w-4" />
+      <Button variant="default" size="lg" className="gap-2 px-6" onClick={openModal}>
+        <Wallet className="h-5 w-5" />
         {activeAccount ? truncateAddress(activeAccount.address) : "Connect Wallet"}
       </Button>
 

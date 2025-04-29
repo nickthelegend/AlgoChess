@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { ChessIcon } from "@/components/chess-icon"
-import { ConnectWalletButton } from "@/components/connect-wallet-button"
 import { Menu } from "lucide-react"
 
 export function Nav() {
@@ -31,7 +30,6 @@ export function Nav() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center">
         <div className="flex items-center gap-4 flex-1">
-          <ConnectWalletButton />
           <Link href="/" className="flex items-center gap-2">
             <ChessIcon className="h-6 w-6" />
             <span className="font-bold">AlgoChess</span>

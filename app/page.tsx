@@ -2,16 +2,22 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChessIcon } from "@/components/chess-icon"
+import { ConnectWalletButton } from "@/components/connect-wallet-button"
 
 export default function HomePage() {
   return (
     <div className="container flex flex-col items-center justify-center min-h-screen py-12 px-4">
-      <div className="flex flex-col items-center space-y-6 text-center mb-12">
+      <div className="flex flex-col items-center space-y-6 text-center mb-8">
         <ChessIcon className="h-24 w-24 text-primary" />
-        <h1 className="text-4xl font-bold tracking-tight">Chess Master</h1>
+        <h1 className="text-4xl font-bold tracking-tight">AlgoChess</h1>
         <p className="text-muted-foreground max-w-md">
           Play chess online with friends, challenge the computer, or solve puzzles to improve your skills.
         </p>
+
+        {/* Centered Connect Wallet Button */}
+        <div className="mt-4 mb-6">
+          <ConnectWalletButton />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl">
