@@ -2,13 +2,14 @@ import type React from "react"
 import "@/app/globals.css"
 import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
+import { Nav } from "@/components/nav"
+import { WalletProviderWrapper } from "@/providers/wallet-provider"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
-  title: "Chess Master",
+  title: "AlgoChess",
   description: "Play chess online with friends or against the computer",
-    generator: 'v0.dev'
 }
 
 export default function RootLayout({
@@ -19,9 +20,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          {children}
-        </ThemeProvider>
+        <WalletProviderWrapper>
+          <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+            <Nav />
+            <main>{children}</main>
+          </ThemeProvider>
+        </WalletProviderWrapper>
       </body>
     </html>
   )
