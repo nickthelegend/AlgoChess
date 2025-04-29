@@ -4,6 +4,7 @@ import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Nav } from "@/components/nav"
 import { WalletProviderWrapper } from "@/providers/wallet-provider"
+import { WalletModalContainer } from "@/components/wallet-modal-container"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -24,6 +25,7 @@ export default function RootLayout({
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
             <Nav />
             <main>{children}</main>
+            <WalletModalContainer />
           </ThemeProvider>
         </WalletProviderWrapper>
       </body>

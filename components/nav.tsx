@@ -6,11 +6,15 @@ import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { ChessIcon } from "@/components/chess-icon"
-import { Menu } from "lucide-react"
+import { Menu, Wallet } from "lucide-react"
+import { useWallet } from "@txnlab/use-wallet-react"
+import { useWalletModal } from "@/hooks/use-wallet-modal"
 
 export function Nav() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
+  const { activeAccount } = useWallet()
+  const { openModal } = useWalletModal()
 
   const routes = [
     { href: "/", label: "Home" },
@@ -26,10 +30,19 @@ export function Nav() {
     return pathname.startsWith(path)
   }
 
+  const truncateAddress = (address: string) => {
+    if (!address) return ""
+    return `${address.slice(0, 4)}...${address.slice(-4)}`
+  }
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center">
         <div className="flex items-center gap-4 flex-1">
+          <Button variant="outline" size="sm" className="gap-2" onClick={openModal}>
+            <Wallet className="h-4 w-4" />
+            {activeAccount ? truncateAddress(activeAccount.address) : "Connect Wallet"}
+          </Button>
           <Link href="/" className="flex items-center gap-2">
             <ChessIcon className="h-6 w-6" />
             <span className="font-bold">AlgoChess</span>

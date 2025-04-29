@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -18,14 +19,28 @@ import {
 } from "@/components/ui/alert-dialog"
 import { toast } from "@/hooks/use-toast"
 import { Chess } from "chess.js"
+import { makeComputerMove } from "@/lib/computer-ai"
+import { useWallet } from "@txnlab/use-wallet-react"
+import { useWalletModal } from "@/hooks/use-wallet-modal"
+import { Wallet } from "lucide-react"
 
 export default function ComputerGamePage() {
+  const router = useRouter()
   const [game, setGame] = useState<Chess>(new Chess())
   const [playerColor, setPlayerColor] = useState<"white" | "black">("white")
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("medium")
   const [isThinking, setIsThinking] = useState(false)
   const [showNewGameDialog, setShowNewGameDialog] = useState(false)
   const [gameResult, setGameResult] = useState<string | null>(null)
+  const { activeAccount } = useWallet()
+  const { openModal } = useWalletModal()
+
+  // Redirect to home if wallet is not connected
+  useEffect(() => {
+    if (!activeAccount) {
+      router.push("/")
+    }
+  }, [activeAccount, router])
 
   // Make computer move if it's computer's turn
   useEffect(() => {
@@ -37,44 +52,54 @@ export default function ComputerGamePage() {
       ) {
         setIsThinking(true)
 
-        // Add a small delay to simulate "thinking"
-        setTimeout(() => {
+        // Add a delay to simulate "thinking" - longer for harder difficulties
+        const thinkingTime = difficulty === "easy" ? 300 : difficulty === "medium" ? 800 : 1200
+
+        setTimeout(async () => {
           try {
-            // Get all legal moves
-            const legalMoves = game.moves({ verbose: true })
+            // Use the improved AI to get a move
+            const computerMove = await makeComputerMove(game, difficulty)
 
-            if (legalMoves.length === 0) {
-              setIsThinking(false)
-              return
+            if (computerMove) {
+              // Create a new game instance with the current position
+              const newGame = new Chess(game.fen())
+
+              // Make the move
+              newGame.move(computerMove)
+
+              // Update the game state
+              setGame(newGame)
+
+              // Check for game over after computer move
+              checkGameOver(newGame)
             }
-
-            // For simplicity, just make a random move
-            // In a real app, you'd use a more sophisticated algorithm
-            const randomIndex = Math.floor(Math.random() * legalMoves.length)
-            const computerMove = legalMoves[randomIndex]
-
-            // Create a new game instance with the current position
-            const newGame = new Chess(game.fen())
-
-            // Make the move
-            newGame.move(computerMove)
-
-            // Update the game state
-            setGame(newGame)
-
-            // Check for game over after computer move
-            checkGameOver(newGame)
           } catch (error) {
             console.error("Error making computer move:", error)
-            toast({
-              title: "Error",
-              description: "The computer couldn't make a move. Please try again.",
-              variant: "destructive",
-            })
+
+            // Fallback to random move if AI fails
+            try {
+              const legalMoves = game.moves({ verbose: true })
+              if (legalMoves.length > 0) {
+                const randomIndex = Math.floor(Math.random() * legalMoves.length)
+                const randomMove = legalMoves[randomIndex]
+
+                const newGame = new Chess(game.fen())
+                newGame.move(randomMove)
+                setGame(newGame)
+                checkGameOver(newGame)
+              }
+            } catch (fallbackError) {
+              console.error("Fallback move also failed:", fallbackError)
+              toast({
+                title: "Error",
+                description: "The computer couldn't make a move. Please try again.",
+                variant: "destructive",
+              })
+            }
           } finally {
             setIsThinking(false)
           }
-        }, 500)
+        }, thinkingTime)
       }
     }
 
@@ -136,12 +161,49 @@ export default function ComputerGamePage() {
     setPlayerColor(color)
     setGameResult(null)
     setShowNewGameDialog(false)
+
+    // If player chose black, make computer's first move
+    if (color === "black") {
+      setTimeout(() => {
+        const newGame = new Chess()
+        makeComputerMove(newGame, difficulty)
+          .then((move) => {
+            if (move) {
+              newGame.move(move)
+              setGame(newGame)
+            }
+          })
+          .catch((error) => {
+            console.error("Error making first computer move:", error)
+          })
+      }, 500)
+    }
   }
 
   const canPlayerMove = () => {
     return (
       !game.isGameOver() &&
       ((playerColor === "white" && game.turn() === "w") || (playerColor === "black" && game.turn() === "b"))
+    )
+  }
+
+  // If wallet is not connected, show connect wallet prompt
+  if (!activeAccount) {
+    return (
+      <div className="container flex items-center justify-center min-h-screen py-12 px-4">
+        <div className="flex flex-col items-center justify-center p-12 max-w-md text-center">
+          <div className="bg-muted p-8 rounded-lg mb-6 w-full">
+            <Wallet className="h-16 w-16 mx-auto mb-4 text-primary" />
+            <h2 className="text-2xl font-bold mb-2">Connect Your Wallet</h2>
+            <p className="text-muted-foreground mb-6">
+              You need to connect your Algorand wallet to play against the computer.
+            </p>
+            <Button size="lg" onClick={openModal} className="w-full">
+              Connect Wallet
+            </Button>
+          </div>
+        </div>
+      </div>
     )
   }
 
