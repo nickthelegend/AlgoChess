@@ -38,11 +38,8 @@ export function Nav() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center">
-        <div className="flex items-center gap-4 flex-1">
-          <Button variant="outline" size="sm" className="gap-2" onClick={openModal}>
-            <Wallet className="h-4 w-4" />
-            {activeAccount ? truncateAddress(activeAccount.address) : "Connect Wallet"}
-          </Button>
+        {/* Logo and brand name */}
+        <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center gap-2">
             <ChessIcon className="h-6 w-6" />
             <span className="font-bold">AlgoChess</span>
@@ -50,7 +47,7 @@ export function Nav() {
         </div>
 
         {/* Desktop navigation */}
-        <nav className="hidden md:flex items-center gap-6 flex-1 justify-center">
+        <nav className="hidden md:flex items-center gap-6 mx-auto">
           {routes.map((route) => (
             <Link
               key={route.href}
@@ -64,36 +61,44 @@ export function Nav() {
           ))}
         </nav>
 
-        <div className="flex-1 flex justify-end md:hidden">
-          {/* Mobile navigation */}
-          <Sheet open={isOpen} onOpenChange={setIsOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="icon">
-                <Menu className="h-[1.2rem] w-[1.2rem]" />
-                <span className="sr-only">Toggle menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right">
-              <SheetHeader>
-                <SheetTitle>AlgoChess</SheetTitle>
-                <SheetDescription>Chess for everyone</SheetDescription>
-              </SheetHeader>
-              <nav className="flex flex-col gap-4 mt-6">
-                {routes.map((route) => (
-                  <Link
-                    key={route.href}
-                    href={route.href}
-                    className={`text-sm font-medium transition-colors hover:text-primary ${
-                      isActive(route.href) ? "text-foreground" : "text-muted-foreground"
-                    }`}
-                    onClick={() => setIsOpen(false)}
-                  >
-                    {route.label}
-                  </Link>
-                ))}
-              </nav>
-            </SheetContent>
-          </Sheet>
+        {/* Connect wallet button - positioned at the right */}
+        <div className="ml-auto flex items-center gap-4">
+          <Button variant="outline" size="sm" className="gap-2" onClick={openModal}>
+            <Wallet className="h-4 w-4" />
+            {activeAccount ? truncateAddress(activeAccount.address) : "Connect Wallet"}
+          </Button>
+
+          {/* Mobile menu button - only visible on mobile */}
+          <div className="md:hidden">
+            <Sheet open={isOpen} onOpenChange={setIsOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <Menu className="h-[1.2rem] w-[1.2rem]" />
+                  <span className="sr-only">Toggle menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right">
+                <SheetHeader>
+                  <SheetTitle>AlgoChess</SheetTitle>
+                  <SheetDescription>Chess for everyone</SheetDescription>
+                </SheetHeader>
+                <nav className="flex flex-col gap-4 mt-6">
+                  {routes.map((route) => (
+                    <Link
+                      key={route.href}
+                      href={route.href}
+                      className={`text-sm font-medium transition-colors hover:text-primary ${
+                        isActive(route.href) ? "text-foreground" : "text-muted-foreground"
+                      }`}
+                      onClick={() => setIsOpen(false)}
+                    >
+                      {route.label}
+                    </Link>
+                  ))}
+                </nav>
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
       </div>
     </header>
