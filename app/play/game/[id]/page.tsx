@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -20,13 +20,43 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { use } from "react"
+import { Chess } from "chess.js"
 
-export default function GamePage({ params }: { params: { id: string } }) {
+export default function GamePage({ params }: { params: Promise<{ id: string }> }) {
+  // Properly unwrap params using React.use()
+  const resolvedParams = use(params)
+  const gameId = resolvedParams.id
+
   const router = useRouter()
-  const gameId = params.id
   const { gameState, setGameState, playerColor, setPlayerColor, playerName } = useGameState()
   const [isLoading, setIsLoading] = useState(true)
   const [showResignDialog, setShowResignDialog] = useState(false)
+
+  // Local chess instance for immediate updates
+  const [localPosition, setLocalPosition] = useState<string | null>(null)
+  const [isMoving, setIsMoving] = useState(false)
+
+  // Track the last server FEN to detect changes
+  const lastServerFenRef = useRef<string | null>(null)
+
+  // Ref to prevent auto-scrolling
+  const pageRef = useRef<HTMLDivElement>(null)
+  const scrollPositionRef = useRef<number>(0)
+
+  // Save scroll position before updates
+  const saveScrollPosition = useCallback(() => {
+    if (typeof window !== "undefined") {
+      scrollPositionRef.current = window.scrollY
+    }
+  }, [])
+
+  // Restore scroll position after updates
+  const restoreScrollPosition = useCallback(() => {
+    if (typeof window !== "undefined") {
+      window.scrollTo(0, scrollPositionRef.current)
+    }
+  }, [])
 
   // Poll for game state updates
   useEffect(() => {
@@ -34,9 +64,33 @@ export default function GamePage({ params }: { params: { id: string } }) {
 
     const pollGameState = async () => {
       try {
+        // Save current scroll position
+        saveScrollPosition()
+
         const state = await fetchGameState(gameId)
         if (state) {
+          // Check if the server FEN has changed
+          const serverFenChanged = lastServerFenRef.current !== state.fen
+
+          // Update the last server FEN
+          lastServerFenRef.current = state.fen
+
+          // Update the game state
           setGameState(state)
+
+          // Update local position in these cases:
+          // 1. If we don't have a local position yet
+          // 2. If the server FEN has changed (opponent made a move)
+          // 3. If it's not our turn
+          if (
+            !localPosition ||
+            serverFenChanged ||
+            (playerColor === "white" && state.turn === "b") ||
+            (playerColor === "black" && state.turn === "w")
+          ) {
+            console.log("Updating local position from server:", state.fen)
+            setLocalPosition(state.fen)
+          }
 
           // Set player color if not already set
           if (!playerColor && playerName) {
@@ -45,7 +99,6 @@ export default function GamePage({ params }: { params: { id: string } }) {
             } else if (state.players.black?.name === playerName) {
               setPlayerColor("black")
             }
-            // If player name doesn't match either player, they might be a spectator
           }
 
           // Show game result notifications
@@ -69,33 +122,81 @@ export default function GamePage({ params }: { params: { id: string } }) {
         console.error("Error fetching game state:", error)
       } finally {
         setIsLoading(false)
+
+        // Restore scroll position after state update
+        setTimeout(restoreScrollPosition, 0)
       }
     }
 
     // Initial fetch
     pollGameState()
 
-    // Set up polling
-    intervalId = setInterval(pollGameState, 2000)
+    // Set up polling with a shorter interval for more responsive updates
+    intervalId = setInterval(pollGameState, 1000)
 
     return () => {
       clearInterval(intervalId)
     }
-  }, [gameId, playerName, playerColor, setGameState, setPlayerColor])
+  }, [
+    gameId,
+    playerName,
+    playerColor,
+    setGameState,
+    setPlayerColor,
+    localPosition,
+    saveScrollPosition,
+    restoreScrollPosition,
+  ])
 
-  const handleMove = async (from: string, to: string, promotion?: string) => {
-    if (!gameState || gameState.result) return
+  // Optimized move handler with immediate local updates
+  const handleMove = useCallback(
+    async (from: string, to: string, promotion?: string) => {
+      if (!gameState || gameState.result || isMoving) return false
 
-    try {
-      await makeMove(gameId, from, to, promotion)
-    } catch (error) {
-      toast({
-        title: "Invalid move",
-        description: "That move is not allowed",
-        variant: "destructive",
-      })
-    }
-  }
+      setIsMoving(true)
+
+      try {
+        // Create a local chess instance for immediate update
+        const chess = new Chess(gameState.fen)
+
+        // Try the move locally first
+        const moveResult = chess.move({
+          from,
+          to,
+          promotion: promotion || undefined,
+        })
+
+        if (!moveResult) {
+          throw new Error("Invalid move")
+        }
+
+        // Update local position immediately for responsive UI
+        const newPosition = chess.fen()
+        console.log("Setting local position after move:", newPosition)
+        setLocalPosition(newPosition)
+
+        // Make the actual move on the server
+        await makeMove(gameId, from, to, promotion)
+
+        return true
+      } catch (error) {
+        console.error("Move error:", error)
+
+        // Reset local position on error
+        setLocalPosition(gameState.fen)
+
+        toast({
+          title: "Invalid move",
+          description: "That move is not allowed",
+          variant: "destructive",
+        })
+        return false
+      } finally {
+        setIsMoving(false)
+      }
+    },
+    [gameId, gameState, isMoving],
+  )
 
   const handleResign = async () => {
     try {
@@ -133,16 +234,27 @@ export default function GamePage({ params }: { params: { id: string } }) {
     )
   }
 
+  // Use local position for immediate updates if available, otherwise use server position
+  const displayPosition = localPosition || gameState.fen
+
+  // Debug info
+  console.log("Current display position:", displayPosition)
+  console.log("Server position:", gameState.fen)
+  console.log("Current turn:", gameState.turn)
+  console.log("Player color:", playerColor)
+
   return (
-    <div className="container py-8 px-4">
+    <div className="container py-8 px-4" ref={pageRef}>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <Chessboard
-            position={gameState.fen}
+            key={displayPosition} // Force re-render when position changes
+            position={displayPosition}
             orientation={playerColor === "black" ? "black" : "white"}
             onPieceDrop={(from, to) => handleMove(from, to)}
             isDraggable={
               !gameState.result &&
+              !isMoving &&
               ((playerColor === "white" && gameState.turn === "w") ||
                 (playerColor === "black" && gameState.turn === "b"))
             }

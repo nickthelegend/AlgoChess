@@ -12,8 +12,13 @@ import { useGameState } from "@/lib/game-state"
 import { useWallet } from "@txnlab/use-wallet-react"
 import { useWalletModal } from "@/hooks/use-wallet-modal"
 import { Wallet } from "lucide-react"
+import { use } from "react"
 
-export default function JoinGamePage({ params }: { params: { id: string } }) {
+export default function JoinGamePage({ params }: { params: Promise<{ id: string }> }) {
+  // Properly unwrap params using React.use()
+  const resolvedParams = use(params)
+  const gameId = resolvedParams.id
+
   const router = useRouter()
   const [playerName, setPlayerName] = useState("")
   const [isJoining, setIsJoining] = useState(false)
@@ -47,11 +52,11 @@ export default function JoinGamePage({ params }: { params: { id: string } }) {
 
     setIsJoining(true)
     try {
-      const success = await joinGame(params.id, playerName)
+      const success = await joinGame(gameId, playerName)
       if (success) {
         // Set the player name in the client-side state
         setGamePlayerName(playerName)
-        router.push(`/play/game/${params.id}`)
+        router.push(`/play/game/${gameId}`)
       } else {
         throw new Error("Failed to join game")
       }

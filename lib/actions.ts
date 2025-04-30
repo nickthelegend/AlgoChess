@@ -51,22 +51,28 @@ export async function createGame(playerName: string, colorPreference: string) {
 }
 
 export async function joinGame(gameId: string, playerName: string) {
+  console.log(`Joining game ${gameId} as ${playerName}`)
+
   const gameState = games.get(gameId)
 
   if (!gameState) {
+    console.error(`Game not found: ${gameId}`)
     throw new Error("Game not found")
   }
 
   // Check if game is already full
   if (gameState.players.white && gameState.players.black) {
+    console.error(`Game ${gameId} is already full`)
     throw new Error("Game is already full")
   }
 
   // Assign player to available color
   if (!gameState.players.white) {
     gameState.players.white = { name: playerName }
+    console.log(`${playerName} joined as white`)
   } else if (!gameState.players.black) {
     gameState.players.black = { name: playerName }
+    console.log(`${playerName} joined as black`)
   }
 
   // Add system message
@@ -80,22 +86,32 @@ export async function joinGame(gameId: string, playerName: string) {
   games.set(gameId, gameState)
 
   revalidatePath(`/play/game/${gameId}`)
+  console.log(`Successfully joined game ${gameId}`)
 
   return true
 }
 
 export async function fetchGameState(gameId: string) {
-  return games.get(gameId) || null
+  const gameState = games.get(gameId) || null
+  // Add a timestamp to help with debugging
+  if (gameState) {
+    gameState.fetchTimestamp = Date.now()
+  }
+  return gameState
 }
 
 export async function makeMove(gameId: string, from: string, to: string, promotion?: string) {
+  console.log(`Making move in game ${gameId}: ${from} to ${to}${promotion ? ` with promotion ${promotion}` : ""}`)
+
   const gameState = games.get(gameId)
 
   if (!gameState) {
+    console.error(`Game not found: ${gameId}`)
     throw new Error("Game not found")
   }
 
   if (gameState.result) {
+    console.error(`Game ${gameId} is already over`)
     throw new Error("Game is already over")
   }
 
@@ -103,49 +119,56 @@ export async function makeMove(gameId: string, from: string, to: string, promoti
   const chess = new Chess(gameState.fen)
 
   // Make the move
-  const move = chess.move({
-    from,
-    to,
-    promotion: promotion || undefined,
-  })
-
-  if (!move) {
-    throw new Error("Invalid move")
-  }
-
-  // Update game state
-  gameState.fen = chess.fen()
-  gameState.turn = chess.turn()
-  gameState.moveNumber = chess.moveNumber()
-  gameState.lastMoveTime = Date.now()
-
-  // Check for game over conditions
-  if (chess.isCheckmate()) {
-    gameState.result = "checkmate"
-
-    // Add system message
-    chatMessages.get(gameId).push({
-      sender: "System",
-      content: `Checkmate! ${chess.turn() === "w" ? "Black" : "White"} wins!`,
-      timestamp: Date.now(),
+  try {
+    const move = chess.move({
+      from,
+      to,
+      promotion: promotion || undefined,
     })
-  } else if (chess.isDraw()) {
-    gameState.result = "draw"
 
-    // Add system message
-    chatMessages.get(gameId).push({
-      sender: "System",
-      content: "Game ended in a draw!",
-      timestamp: Date.now(),
-    })
+    if (!move) {
+      console.error(`Invalid move in game ${gameId}: ${from} to ${to}`)
+      throw new Error("Invalid move")
+    }
+
+    // Update game state
+    gameState.fen = chess.fen()
+    gameState.turn = chess.turn()
+    gameState.moveNumber = chess.moveNumber()
+    gameState.lastMoveTime = Date.now()
+
+    // Check for game over conditions
+    if (chess.isCheckmate()) {
+      gameState.result = "checkmate"
+
+      // Add system message
+      chatMessages.get(gameId).push({
+        sender: "System",
+        content: `Checkmate! ${chess.turn() === "w" ? "Black" : "White"} wins!`,
+        timestamp: Date.now(),
+      })
+    } else if (chess.isDraw()) {
+      gameState.result = "draw"
+
+      // Add system message
+      chatMessages.get(gameId).push({
+        sender: "System",
+        content: "Game ended in a draw!",
+        timestamp: Date.now(),
+      })
+    }
+
+    // Update game state
+    games.set(gameId, gameState)
+
+    revalidatePath(`/play/game/${gameId}`)
+    console.log(`Move successfully made in game ${gameId}. New FEN: ${gameState.fen}`)
+
+    return true
+  } catch (error) {
+    console.error(`Error making move in game ${gameId}:`, error)
+    throw error
   }
-
-  // Update game state
-  games.set(gameId, gameState)
-
-  revalidatePath(`/play/game/${gameId}`)
-
-  return true
 }
 
 export async function resignGame(gameId: string, color: "w" | "b") {

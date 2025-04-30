@@ -1,20 +1,32 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef, memo } from "react"
 import { Chessboard as ReactChessboard } from "react-chessboard"
 import { useTheme } from "next-themes"
 
 interface ChessboardProps {
   position: string
   orientation?: "white" | "black"
-  onPieceDrop?: (sourceSquare: string, targetSquare: string, piece?: string) => void
+  onPieceDrop?: (sourceSquare: string, targetSquare: string, piece?: string) => boolean | Promise<boolean>
   isDraggable?: boolean
 }
 
-export function Chessboard({ position, orientation = "white", onPieceDrop, isDraggable = true }: ChessboardProps) {
+// Memoize the chessboard component to prevent unnecessary re-renders
+export const Chessboard = memo(function Chessboard({
+  position,
+  orientation = "white",
+  onPieceDrop,
+  isDraggable = true,
+}: ChessboardProps) {
   const [boardSize, setBoardSize] = useState(480)
   const { theme } = useTheme()
   const isDarkTheme = theme === "dark"
+  const positionRef = useRef(position)
+
+  // Update position ref when position changes
+  useEffect(() => {
+    positionRef.current = position
+  }, [position])
 
   // Responsive board size
   useEffect(() => {
@@ -39,25 +51,28 @@ export function Chessboard({ position, orientation = "white", onPieceDrop, isDra
     }
   }, [])
 
-  const handlePieceDrop = (sourceSquare: string, targetSquare: string, piece: string) => {
-    if (onPieceDrop) {
-      // Extract promotion piece if needed
-      const isPawnPromotion =
-        piece.charAt(1) === "P" &&
-        ((piece.charAt(0) === "w" && targetSquare.charAt(1) === "8") ||
-          (piece.charAt(0) === "b" && targetSquare.charAt(1) === "1"))
+  const handlePieceDrop = async (sourceSquare: string, targetSquare: string, piece: string) => {
+    if (!onPieceDrop) return false
 
+    // Extract promotion piece if needed
+    const isPawnPromotion =
+      piece.charAt(1) === "P" &&
+      ((piece.charAt(0) === "w" && targetSquare.charAt(1) === "8") ||
+        (piece.charAt(0) === "b" && targetSquare.charAt(1) === "1"))
+
+    try {
       if (isPawnPromotion) {
         // For simplicity, always promote to queen
         // In a real app, you'd show a promotion dialog
         const promotionPiece = piece.charAt(0) === "w" ? "q" : "q"
-        onPieceDrop(sourceSquare, targetSquare, promotionPiece)
+        return await onPieceDrop(sourceSquare, targetSquare, promotionPiece)
       } else {
-        onPieceDrop(sourceSquare, targetSquare)
+        return await onPieceDrop(sourceSquare, targetSquare)
       }
+    } catch (error) {
+      console.error("Error handling piece drop:", error)
+      return false
     }
-
-    return true
   }
 
   return (
@@ -68,6 +83,8 @@ export function Chessboard({ position, orientation = "white", onPieceDrop, isDra
         boardOrientation={orientation}
         onPieceDrop={handlePieceDrop}
         areArrowsAllowed={true}
+        animationDuration={100} // Fast animations for responsive feel
+        transitionDuration={100} // Fast transitions
         customBoardStyle={{
           borderRadius: "4px",
           boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
@@ -83,4 +100,4 @@ export function Chessboard({ position, orientation = "white", onPieceDrop, isDra
       />
     </div>
   )
-}
+})

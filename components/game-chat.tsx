@@ -15,6 +15,9 @@ export function GameChat({ gameId, playerName }: GameChatProps) {
   const [messages, setMessages] = useState<any[]>([])
   const [newMessage, setNewMessage] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const chatContainerRef = useRef<HTMLDivElement>(null)
+  const isAutoScrollEnabled = useRef(true)
+  const prevMessagesLength = useRef(0)
 
   // Poll for new messages
   useEffect(() => {
@@ -22,8 +25,21 @@ export function GameChat({ gameId, playerName }: GameChatProps) {
 
     const pollMessages = async () => {
       try {
+        // Save scroll position before updating
+        const chatContainer = chatContainerRef.current
+        const isScrolledToBottom =
+          chatContainer && chatContainer.scrollHeight - chatContainer.scrollTop <= chatContainer.clientHeight + 50
+
+        // Only auto-scroll if user was already at the bottom
+        isAutoScrollEnabled.current = isScrolledToBottom || false
+
         const chatMessages = await fetchChatMessages(gameId)
-        setMessages(chatMessages)
+
+        // Only update if there are new messages
+        if (chatMessages.length !== prevMessagesLength.current) {
+          setMessages(chatMessages)
+          prevMessagesLength.current = chatMessages.length
+        }
       } catch (error) {
         console.error("Error fetching chat messages:", error)
       }
@@ -40,9 +56,11 @@ export function GameChat({ gameId, playerName }: GameChatProps) {
     }
   }, [gameId])
 
-  // Scroll to bottom when messages change
+  // Scroll to bottom when messages change, but only if auto-scroll is enabled
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    if (isAutoScrollEnabled.current && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+    }
   }, [messages])
 
   const handleSendMessage = async () => {
@@ -51,9 +69,22 @@ export function GameChat({ gameId, playerName }: GameChatProps) {
     try {
       await sendChatMessage(gameId, playerName, newMessage)
       setNewMessage("")
+      // Enable auto-scroll when user sends a message
+      isAutoScrollEnabled.current = true
     } catch (error) {
       console.error("Error sending message:", error)
     }
+  }
+
+  // Handle manual scroll to detect if user has scrolled up
+  const handleScroll = () => {
+    const chatContainer = chatContainerRef.current
+    if (!chatContainer) return
+
+    // If user scrolls up, disable auto-scroll
+    // If user scrolls to bottom, enable auto-scroll
+    isAutoScrollEnabled.current =
+      chatContainer.scrollHeight - chatContainer.scrollTop <= chatContainer.clientHeight + 50
   }
 
   return (
@@ -63,7 +94,7 @@ export function GameChat({ gameId, playerName }: GameChatProps) {
       </CardHeader>
       <CardContent>
         <div className="flex flex-col h-[300px]">
-          <div className="flex-grow overflow-y-auto mb-4 space-y-2">
+          <div className="flex-grow overflow-y-auto mb-4 space-y-2" ref={chatContainerRef} onScroll={handleScroll}>
             {messages.length === 0 ? (
               <p className="text-center text-muted-foreground text-sm py-8">No messages yet. Start the conversation!</p>
             ) : (
