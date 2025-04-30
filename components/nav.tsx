@@ -9,6 +9,7 @@ import { ChessIcon } from "@/components/chess-icon"
 import { Menu, Wallet } from "lucide-react"
 import { useWallet } from "@txnlab/use-wallet-react"
 import { useWalletModal } from "@/hooks/use-wallet-modal"
+import { ThemeToggle } from "./theme-toggle"
 
 export function Nav() {
   const pathname = usePathname()
@@ -61,8 +62,10 @@ export function Nav() {
           ))}
         </nav>
 
-        {/* Connect wallet button - positioned at the right */}
+        {/* Connect wallet button and theme toggle - positioned at the right */}
         <div className="ml-auto flex items-center gap-4">
+          <ThemeToggle />
+
           <Button variant="outline" size="sm" className="gap-2" onClick={openModal}>
             <Wallet className="h-4 w-4" />
             {activeAccount ? truncateAddress(activeAccount.address) : "Connect Wallet"}

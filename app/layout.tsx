@@ -22,7 +22,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <WalletProviderWrapper>
-          <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             <Nav />
             <main>{children}</main>
             <WalletModalContainer />

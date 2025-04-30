@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Chessboard as ReactChessboard } from "react-chessboard"
+import { useTheme } from "next-themes"
 
 interface ChessboardProps {
   position: string
@@ -12,6 +13,8 @@ interface ChessboardProps {
 
 export function Chessboard({ position, orientation = "white", onPieceDrop, isDraggable = true }: ChessboardProps) {
   const [boardSize, setBoardSize] = useState(480)
+  const { theme } = useTheme()
+  const isDarkTheme = theme === "dark"
 
   // Responsive board size
   useEffect(() => {
@@ -69,8 +72,12 @@ export function Chessboard({ position, orientation = "white", onPieceDrop, isDra
           borderRadius: "4px",
           boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
         }}
-        customDarkSquareStyle={{ backgroundColor: "#779952" }}
-        customLightSquareStyle={{ backgroundColor: "#edeed1" }}
+        customDarkSquareStyle={{
+          backgroundColor: isDarkTheme ? "#1a1a1a" : "#779952",
+        }}
+        customLightSquareStyle={{
+          backgroundColor: isDarkTheme ? "#f0f0f0" : "#edeed1",
+        }}
         customPieces={{}}
         isDraggablePiece={() => isDraggable}
       />
